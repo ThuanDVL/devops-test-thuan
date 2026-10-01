@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_NAME = 'devops-test'
-        DEPLOY_URL   = 'https://thuandvl.github.io/devops-test-thuan/'
-        IMAGE_NAME   = 'devops-test-thuan'
+        PROJECT_NAME   = 'devops-test'
+        DEPLOY_URL     = 'https://thuandvl.github.io/devops-test-thuan/'
+        IMAGE_NAME     = 'devops-test-thuan'
         CONTAINER_NAME = 'devops-web'
     }
 
@@ -86,14 +86,18 @@ Please check Jenkins.""")
 }
 
 def sendTelegram(String message) {
-    withCredentials([
-        string(credentialsId: 'TELEGRAM_BOT_TOKEN', variable: 'TOKEN'),
-        string(credentialsId: 'TELEGRAM_CHAT_ID', variable: 'CHAT_ID')
-    ]) {
-        sh """
-            curl -s -X POST "https://api.telegram.org/bot\${TOKEN}/sendMessage" \
-              --data-urlencode "chat_id=\${CHAT_ID}" \
-              --data-urlencode "text=${message}"
-        """
+    try {
+        withCredentials([
+            string(credentialsId: 'TELEGRAM_BOT_TOKEN', variable: 'TOKEN'),
+            string(credentialsId: 'TELEGRAM_CHAT_ID', variable: 'CHAT_ID')
+        ]) {
+            sh """
+                curl -s -X POST "https://api.telegram.org/bot\${TOKEN}/sendMessage" \
+                  --data-urlencode "chat_id=\${CHAT_ID}" \
+                  --data-urlencode "text=${message}"
+            """
+        }
+    } catch (err) {
+        echo "Telegram skipped (chua cau hinh credentials): ${err}"
     }
 }
