@@ -1,0 +1,16 @@
+{
+  "name": "devops-test-thuan",
+  "version": "1.0.0",
+  "description": "DevOps CI/CD practice - website giới thiệu",
+  "scripts": {
+    "install-deps": "npm install",
+    "build": "node build.js",
+    "start": "npx serve dist -l 3000"
+  },
+  "keywords": ["devops", "cicd", "jenkins"],
+  "author": "Mai Van Thuan",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.4"
+  }
+}
