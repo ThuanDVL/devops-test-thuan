@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         PROJECT_NAME   = 'devops-test'
-        DEPLOY_URL     = 'https://thuandvl.github.io/devops-test-thuan/'
+        DEPLOY_URL     = 'https://devops-test-thuan-m9yh.vercel.app/'
         IMAGE_NAME     = 'devops-test-thuan'
         CONTAINER_NAME = 'devops-web'
     }
@@ -29,11 +29,9 @@ Branch: main""")
         stage('Install dependencies') {
             steps {
                 sh '''
-                    docker run --rm \
-                      -v "$WORKSPACE":/app \
-                      -w /app \
-                      node:22-alpine \
-                      npm install
+                    set -eu
+                    docker build --target dependencies \
+                      --tag "${IMAGE_NAME}-dependencies:${BUILD_NUMBER}" .
                 '''
             }
         }
@@ -41,12 +39,11 @@ Branch: main""")
         stage('Build project') {
             steps {
                 sh '''
-                    docker run --rm \
-                      -v "$WORKSPACE":/app \
-                      -w /app \
-                      node:22-alpine \
-                      npm run build
-                    ls -la dist
+                    set -eu
+                    docker build --target build \
+                      --tag "${IMAGE_NAME}-build:${BUILD_NUMBER}" .
+                    docker run --rm "${IMAGE_NAME}-build:${BUILD_NUMBER}" \
+                      ls -la /app/dist
                 '''
             }
         }
@@ -54,11 +51,28 @@ Branch: main""")
         stage('Deploy') {
             steps {
                 sh '''
-                    docker rm -f ${CONTAINER_NAME} || true
-                    docker build -t ${IMAGE_NAME} .
-                    docker run -d --name ${CONTAINER_NAME} -p 8081:80 ${IMAGE_NAME}
+                    set -eu
+                    docker build --tag "${IMAGE_NAME}:${BUILD_NUMBER}" .
+                    if docker inspect "${CONTAINER_NAME}" >/dev/null 2>&1; then
+                      docker rm --force "${CONTAINER_NAME}"
+                    fi
+                    docker run --detach --restart unless-stopped \
+                      --name "${CONTAINER_NAME}" \
+                      --publish 3000:80 \
+                      "${IMAGE_NAME}:${BUILD_NUMBER}"
+
+                    attempt=0
+                    until curl --fail --silent http://docker:3000/ >/dev/null; do
+                      attempt=$((attempt + 1))
+                      if [ "$attempt" -ge 15 ]; then
+                        echo "Deployment health check failed at http://docker:3000/." >&2
+                        docker logs "${CONTAINER_NAME}"
+                        exit 1
+                      fi
+                      sleep 2
+                    done
                     echo "Deployed successfully"
-                    echo "Local: http://localhost:8081"
+                    echo "Local: http://localhost:3000"
                     echo "URL: ${DEPLOY_URL}"
                 '''
             }
